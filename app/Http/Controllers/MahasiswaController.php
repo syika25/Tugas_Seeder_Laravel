@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Mahasiswa;
+use App\Models\Dosen;
 
 class MahasiswaController extends Controller
 {
@@ -12,8 +13,8 @@ class MahasiswaController extends Controller
      */
     public function index()
     {
-        $mahasiswa = Mahasiswa::with(['dosen', 'krs.mataKuliah'])->get();
-        return view('mahasiswa.index', compact('mahasiswa'));
+        $dataMahasiswa = Mahasiswa::with('dosen')->get();
+        return view('pages.mahasiswa.daftar-mhs', compact('dataMahasiswa'));
     }
 
     /**
@@ -21,7 +22,8 @@ class MahasiswaController extends Controller
      */
     public function create()
     {
-        //
+        $dosens = Dosen::all(); // Ambil data dosen untuk dropdown
+        return view('pages.mahasiswa.add-mhs', compact('dosens'));
     }
 
     /**
@@ -29,38 +31,77 @@ class MahasiswaController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'npm'  => 'required|unique:mahasiswa,npm',
+            'nama' => 'required|min:3',
+            'nidn' => 'required|exists:dosen,nidn',
+        ],
+        [
+            'npm.required' => 'NPM wajib diisi',
+            'npm.unique' => 'NPM sudah terdaftar',
+            'nama.required' => 'Nama mahasiswa wajib diisi',
+            'nama.min' => 'Nama minimal 3 karakter',
+            'nidn.required' => 'Dosen wali wajib dipilih',
+            'nidn.exists' => 'Dosen tidak ditemukan',
+        ]);
+
+        // Simpan data
+        Mahasiswa::create($validated);
+        
+        return redirect()->route('mahasiswa')->with('success', 'Data mahasiswa berhasil ditambahkan');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $npm)
     {
-        //
+        $detailMahasiswa = Mahasiswa::with('dosen')->findOrFail($npm);
+        return view('pages.mahasiswa.detail-mhs', compact('detailMahasiswa'));
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(string $npm)
     {
-        //
+        $detailMahasiswa = Mahasiswa::findOrFail($npm);
+        $dosens = Dosen::all();
+
+        return view('pages.mahasiswa.add-mhs', compact('detailMahasiswa', 'dosens'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $npm)
     {
-        //
+        $validated = $request->validate([
+            'npm' => 'required|unique:mahasiswa,npm,'.$npm.',npm',
+            'nama' => 'required|min:3',
+            'nidn' => 'required|exists:dosen,nidn',
+        ],
+        [
+            'npm.required' => 'NPM wajib diisi',
+            'npm.unique' => 'NPM sudah terdaftar',
+            'nama.required' => 'Nama mahasiswa wajib diisi',
+            'nama.min' => 'Nama minimal 3 karakter',
+            'nidn.required' => 'Dosen wali wajib dipilih',
+            'nidn.exists' => 'Dosen tidak ditemukan',
+        ]);
+
+        $mahasiswa = Mahasiswa::findOrFail($npm);
+        $mahasiswa->update($validated);
+        
+        return redirect()->route('mahasiswa')->with('success', 'Data mahasiswa berhasil diperbarui');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(string $npm)
     {
-        //
+        Mahasiswa::destroy($npm);
+        return redirect()->route('mahasiswa')->with('success', 'Data mahasiswa berhasil dihapus');
     }
 }
