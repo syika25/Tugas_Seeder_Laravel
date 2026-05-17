@@ -11,9 +11,23 @@ class MahasiswaController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $dataMahasiswa = Mahasiswa::with('dosen')->get();
+        $search = $request->keyword;
+        $perPage = $request->perPage ?: 5; // Default 5 jika tidak ada input
+
+        $dataMahasiswa = Mahasiswa::with('dosen')
+            ->when($search, function($query, $search) {
+                return $query->where('npm', 'like', "%$search%")
+                            ->orWhere('nama', 'like', "%$search%")
+                            ->orWhereHas('dosen', function($q) use ($search) {
+                                $q->where('nama', 'like', "%$search%");
+                            });
+            })
+            ->orderBy('npm', 'asc') // Urutkan berdasarkan NPM (karena primary key = npm)
+            ->paginate($perPage)
+            ->withQueryString(); // Preserve keyword & perPage di pagination
+
         return view('pages.mahasiswa.daftar-mhs', compact('dataMahasiswa'));
     }
 
